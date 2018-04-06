@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
 
+library(ggplot2)
+library(scales)
+
 args <- commandArgs(TRUE)
 
 if (length(args) < 2) {
@@ -31,22 +34,41 @@ library(scales)
 
 # first color is the reference, the others are the queries in order
 colors <- rainbow(length(query_filenames))
+=======
+### output prefix
+outfile <- args[[1]]
+
+## refid 
+ref_filename <- args[[2]]
+ref_name <- ref_filename
+
+query_filenames = tail(args, -2)
+query_names <- query_filenames
+
+colors <- rainbow(length(query_filenames))
+
+## Assume the first entry is the reference
+
+cat("Creating Nchart\n")
+cat("===============\n")
+cat("outfile: ",         outfile, "\n")
+cat("ref_filename: ",    ref_filename, "\n")
+cat("query_filenames: ", query_filenames, "\n")
+cat("query_names: ",     query_names, "\n")
 
 
 
+## Load the reference lens
 #############################################################################
-
-ref.data <- read.table(filename_ref, header=FALSE)
+ref.data <- read.table(ref_filename, header=FALSE)
 names(ref.data) <- c("name","length")
 ref.data$length <- sort(as.numeric(ref.data$length),decreasing=TRUE)
-
 genome.length <- max(sum(ref.data$length))
+ref.cumsum <- data.frame(NG=cumsum(ref.data$length/genome.length*100),contig.length=ref.data$length,contig.source=ref_name)
+ref.cumsum.0 <- rbind(data.frame(NG=c(0),contig.length=max(ref.cumsum$contig.length),contig.source=ref_name),ref.cumsum)
 
-
-ref.cumsum <- data.frame(NG=cumsum(ref.data$length/genome.length*100),contig.length=ref.data$length,contig.source="Reference")
-
-ref.cumsum.0 <- rbind(data.frame(NG=c(0),contig.length=max(ref.cumsum$contig.length),contig.source="Reference"),ref.cumsum)
-
+## Now process each query
+############################################################################
 
 for (i in seq(length(query_filenames))) {
   filename_query = query_filenames[i]
@@ -67,6 +89,7 @@ for (i in seq(length(query_filenames))) {
   ref.cumsum.0 <- rbind(ref.cumsum.0,query.cumsum.0)
 }
 
+
 bp_format<-function(num) {
   if (num > 1000000000) {
     paste(formatC(num/1000000000,format="f",digits=1,big.mark=",",drop0trailing = TRUE)," Gbp",sep="")
@@ -81,10 +104,11 @@ bp_format<-function(num) {
 
 theme_set(theme_bw(base_size = 12) + theme(panel.grid.minor = element_line(colour = NA)))
 
-
 percent_format <- function(num) {
   paste(num,"%", sep="")
 }
+
+cat("make plot\n")
 
 png(file=outfile, width=1600,height=1000,res=200)
 
@@ -96,7 +120,7 @@ print(
     geom_path(size=1.5,alpha=0.5) + 
     geom_point(data=ref.cumsum, size=2,alpha=0.5) + 
     labs(x = paste("Percentage of reference (",bp_format(genome.length),")", sep=""),y="Sequence length",colour="Assembly",title="Cumulative sequence length") +
-    scale_color_manual(values=colors) +
+   # scale_color_manual(values=colors) +
     annotation_logticks(sides="lr")
 )
 
